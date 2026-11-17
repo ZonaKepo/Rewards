@@ -11,31 +11,22 @@
   padding-bottom:env(safe-area-inset-bottom,0px);
   --bg:#fff8e7; --ink:#2b2438; --card:#ffffff; --line:#e9dfc8;
   --plus:#1f9d63; --plus-ink:#ffffff; --minus:#e5484d; --minus-ink:#ffffff;
-  --accent:#6a4cff; --muted:#7a7388;
-  color-scheme:light;
+  --accent:#6a4cff; --muted:#7a7388; color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#1b1726; --ink:#f3efff; --card:#272136; --line:#3a3250;
+  :root{--bg:#1b1726; --ink:#f3efff; --card:#272136; --line:#3a3250;
     --plus:#2fbf7a; --plus-ink:#07230f; --minus:#ff6369; --minus-ink:#2a0508;
-    --accent:#9b87ff; --muted:#a69fb8; color-scheme:dark;
-  }
+    --accent:#9b87ff; --muted:#a69fb8; color-scheme:dark;}
 }
-:root[data-theme="dark"]{
-  --bg:#1b1726; --ink:#f3efff; --card:#272136; --line:#3a3250;
-  --plus:#2fbf7a; --plus-ink:#07230f; --minus:#ff6369; --minus-ink:#2a0508;
-  --accent:#9b87ff; --muted:#a69fb8; color-scheme:dark;
-}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:"Baloo 2","Trebuchet MS","Segoe UI",system-ui,sans-serif;min-height:100vh}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;min-height:100vh}
 main{max-width:720px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:18px}
 .top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:1.1rem}
 .gear{background:none;border:0;font-size:1.8rem;cursor:pointer;padding:6px 10px;color:var(--muted)}
 .score{background:var(--card);border:3px solid var(--line);border-radius:32px;padding:22px 16px;text-align:center}
 .pts{font-size:clamp(5rem,26vw,10rem);line-height:1;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
 .pts.neg{color:var(--minus)}
-.lbl{font-size:1.4rem;color:var(--muted);margin-top:2px}
+.lbl{font-size:1.4rem;color:var(--muted)}
 .time{font-size:clamp(2rem,9vw,3.2rem);font-weight:800;margin-top:14px}
 .group{display:flex;flex-direction:column;gap:10px}
 .title{font-size:clamp(1.4rem,6vw,2rem);font-weight:800;padding-left:6px}
@@ -53,12 +44,14 @@ main{max-width:720px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-dire
 .panel label{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .panel input{width:110px;font:inherit;font-size:1.4rem;padding:10px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--ink);text-align:center}
 .small{font:inherit;font-size:1.1rem;padding:12px;border-radius:16px;border:2px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.err{display:none;background:var(--minus);color:var(--minus-ink);border-radius:16px;padding:12px 16px;font-size:1.1rem;text-align:center}
 @media (prefers-reduced-motion:reduce){.btn{transition:none}}
 </style>
 </head>
 <body>
 <main>
-  <div class="top"><span id="tgl"></span><button class="gear" id="gear" aria-label="Pengaturan">⚙️</button></div>
+  <div class="top"><span id="tgl"></span><span><span id="dot" title="Tersambung">⚪</span><button class="gear" id="gear" aria-label="Pengaturan">⚙️</button></span></div>
+  <div class="err" id="err"></div>
 
   <section class="score" aria-live="polite">
     <div class="pts" id="pts">0</div>
@@ -69,16 +62,16 @@ main{max-width:720px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-dire
   <section class="group">
     <div class="title">🚪 Izin keluar kelas</div>
     <div class="row">
-      <button class="btn plus" data-d="1" data-n="Izin keluar kelas"><span class="big">+1</span>Izin dulu</button>
-      <button class="btn minus" data-d="-1" data-n="Keluar tanpa izin"><span class="big">−1</span>Tidak izin</button>
+      <button class="btn plus" data-d="1"><span class="big">+1</span>Izin dulu</button>
+      <button class="btn minus" data-d="-1"><span class="big">−1</span>Tidak izin</button>
     </div>
   </section>
 
   <section class="group">
     <div class="title">🔒 Menutup pintu</div>
     <div class="row">
-      <button class="btn plus" data-d="1" data-n="Tutup pintu pelan"><span class="big">+1</span>Sopan &amp; pelan</button>
-      <button class="btn minus" data-d="-1" data-n="Pintu dibanting"><span class="big">−1</span>Dibanting</button>
+      <button class="btn plus" data-d="1"><span class="big">+1</span>Sopan &amp; pelan</button>
+      <button class="btn minus" data-d="-1"><span class="big">−1</span>Dibanting</button>
     </div>
   </section>
 
@@ -91,54 +84,86 @@ main{max-width:720px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-dire
 </main>
 
 <script>
+/* ====== ISI DUA BARIS INI ====== */
+var DB_URL = "https://rewards-7decf-default-rtdb.asia-southeast1.firebasedatabase.app"; // dari Firebase
+var KODE   = "mashel";               // bebas, sama untuk semua perangkat
+/* =============================== */
+
 (function(){
-  var KEY="poinDisiplin.v1";
-  var state={date:"",points:0,history:[],minutes:20};
+  var URL_DB = DB_URL.replace(/\/$/,"") + "/" + encodeURIComponent(KODE) + ".json";
+  var state = {date:"", points:0, minutes:20, last:0};
+  var pending = 0;
+  var $ = function(id){return document.getElementById(id);};
+
   function today(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
-  function load(){
-    try{var s=localStorage.getItem(KEY);if(s){var o=JSON.parse(s);if(o&&typeof o==="object")state=Object.assign(state,o);}}catch(e){}
-    checkDay();
+
+  function api(method, body){
+    return fetch(URL_DB,{method:method,headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined})
+      .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();});
   }
-  function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
-  function checkDay(){
-    var t=today();
-    if(state.date!==t){state.date=t;state.points=0;state.history=[];save();}
+  function setOnline(ok,msg){
+    $("dot").textContent = ok ? "🟢" : "🔴";
+    var e=$("err"); e.style.display = ok ? "none" : "block"; if(!ok) e.textContent = msg || "Tidak tersambung. Cek internet.";
   }
+
   function render(){
-    var p=document.getElementById("pts");
-    p.textContent=state.points;
-    p.className="pts"+(state.points<0?" neg":"");
-    var m=Math.max(0,state.points)*state.minutes;
-    document.getElementById("time").textContent="⏱ "+m+" menit";
-    document.getElementById("undo").disabled=state.history.length===0;
-    document.getElementById("mnt").value=state.minutes;
-    document.getElementById("tgl").textContent=new Date().toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long"});
+    var p=$("pts"); p.textContent=state.points; p.className="pts"+(state.points<0?" neg":"");
+    $("time").textContent="⏱ "+Math.max(0,state.points)*state.minutes+" menit";
+    $("undo").disabled = !state.last;
+    if(document.activeElement!==$("mnt")) $("mnt").value=state.minutes;
+    $("tgl").textContent=new Date().toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long"});
   }
+
+  function sync(){
+    if(pending>0) return Promise.resolve();
+    return api("GET").then(function(d){
+      var t=today();
+      if(!d || d.date!==t){
+        d={date:t,points:0,last:0,minutes:(d&&d.minutes)||20};
+        return api("PUT",d).then(function(){return d;});
+      }
+      return d;
+    }).then(function(d){
+      if(pending>0) return;
+      state={date:d.date,points:d.points||0,minutes:d.minutes||20,last:d.last||0};
+      setOnline(true); render();
+    }).catch(function(){setOnline(false);});
+  }
+
+  function change(delta,last){
+    pending++;
+    state.points+=delta; state.last=last; render();
+    api("PATCH",{points:{".sv":{increment:delta}},last:last})
+      .catch(function(){setOnline(false,"Gagal menyimpan. Coba lagi.");})
+      .then(function(){pending--;return sync();});
+  }
+
   document.querySelectorAll(".btn").forEach(function(b){
     b.addEventListener("click",function(){
-      checkDay();
       var d=parseInt(b.dataset.d,10);
-      state.points+=d;state.history.push(d);save();render();
+      change(d,d);
       if(navigator.vibrate){try{navigator.vibrate(d>0?30:[60,40,60]);}catch(e){}}
     });
   });
-  document.getElementById("undo").addEventListener("click",function(){
-    var d=state.history.pop();
-    if(d!==undefined){state.points-=d;save();render();}
-  });
-  document.getElementById("gear").addEventListener("click",function(){
-    document.getElementById("panel").classList.toggle("open");
-  });
-  document.getElementById("mnt").addEventListener("change",function(e){
+  $("undo").addEventListener("click",function(){ if(state.last) change(-state.last,0); });
+  $("gear").addEventListener("click",function(){$("panel").classList.toggle("open");});
+  $("mnt").addEventListener("change",function(e){
     var v=parseInt(e.target.value,10);
-    if(v>0&&v<=240){state.minutes=v;save();}
+    if(v>0&&v<=240){state.minutes=v;pending++;api("PATCH",{minutes:v}).catch(function(){}).then(function(){pending--;return sync();});}
     render();
   });
-  document.getElementById("reset").addEventListener("click",function(){
-    if(confirm("Reset poin hari ini jadi 0?")){state.points=0;state.history=[];save();render();}
+  $("reset").addEventListener("click",function(){
+    if(!confirm("Yakin reset poin hari ini jadi 0?")) return;
+    pending++;
+    api("PUT",{date:today(),points:0,last:0,minutes:state.minutes})
+      .catch(function(){setOnline(false,"Gagal reset. Coba lagi.");})
+      .then(function(){pending--;return sync();});
   });
-  document.addEventListener("visibilitychange",function(){if(!document.hidden){checkDay();render();}});
-  load();render();
+
+  if(/NAMA-PROYEK/.test(DB_URL)){setOnline(false,"Isi DB_URL dan KODE di file index.html dulu.");render();return;}
+  render(); sync();
+  setInterval(sync,3000);
+  document.addEventListener("visibilitychange",function(){if(!document.hidden)sync();});
 })();
 </script>
 </body>
