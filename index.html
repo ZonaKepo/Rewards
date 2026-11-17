@@ -29,9 +29,11 @@ main{max-width:720px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-dire
 .lbl{font-size:1.4rem;color:var(--muted)}
 .time{font-size:clamp(2rem,9vw,3.2rem);font-weight:800;margin-top:14px}
 .group{display:flex;flex-direction:column;gap:10px}
-.title{font-size:clamp(1.4rem,6vw,2rem);font-weight:800;padding-left:6px}
+.title{font-size:clamp(1.4rem,6vw,2rem);font-weight:800;padding:0 6px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sub{font-size:clamp(1.1rem,5vw,1.6rem);color:var(--muted)}
+.cnt{font-size:clamp(1rem,4.5vw,1.4rem);font-weight:700;opacity:.9}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.btn{border:0;border-radius:28px;padding:26px 8px;font:inherit;font-size:clamp(1.3rem,6vw,2rem);font-weight:800;cursor:pointer;min-height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:0 6px 0 rgba(0,0,0,.18);transition:transform .08s,box-shadow .08s}
+.btn{border:0;border-radius:28px;padding:26px 8px;font:inherit;font-size:clamp(1.3rem,6vw,2rem);font-weight:800;cursor:pointer;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:0 6px 0 rgba(0,0,0,.18);transition:transform .08s,box-shadow .08s}
 .btn:active{transform:translateY(5px);box-shadow:0 1px 0 rgba(0,0,0,.18)}
 .btn:focus-visible,.gear:focus-visible,.small:focus-visible{outline:4px solid var(--accent);outline-offset:3px}
 .btn .big{font-size:2.6rem;line-height:1}
@@ -60,18 +62,18 @@ main{max-width:720px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-dire
   </section>
 
   <section class="group">
-    <div class="title">🚪 Izin keluar kelas</div>
+    <div class="title"><span>🚪 Izin keluar kelas</span><span class="sub" id="s1"></span></div>
     <div class="row">
-      <button class="btn plus" data-d="1"><span class="big">+1</span>Izin dulu</button>
-      <button class="btn minus" data-d="-1"><span class="big">−1</span>Tidak izin</button>
+      <button class="btn plus" data-k="a"><span class="big">+1</span>Izin dulu<span class="cnt" id="ca"></span></button>
+      <button class="btn minus" data-k="b"><span class="big">−1</span>Tidak izin<span class="cnt" id="cb"></span></button>
     </div>
   </section>
 
   <section class="group">
-    <div class="title">🔒 Menutup pintu</div>
+    <div class="title"><span>🔒 Menutup pintu</span><span class="sub" id="s2"></span></div>
     <div class="row">
-      <button class="btn plus" data-d="1"><span class="big">+1</span>Sopan &amp; pelan</button>
-      <button class="btn minus" data-d="-1"><span class="big">−1</span>Dibanting</button>
+      <button class="btn plus" data-k="c"><span class="big">+1</span>Sopan &amp; pelan<span class="cnt" id="cc"></span></button>
+      <button class="btn minus" data-k="d"><span class="big">−1</span>Dibanting<span class="cnt" id="cd"></span></button>
     </div>
   </section>
 
@@ -91,11 +93,13 @@ var KODE   = "mashel";               // bebas, sama untuk semua perangkat
 
 (function(){
   var URL_DB = DB_URL.replace(/\/$/,"") + "/" + encodeURIComponent(KODE) + ".json";
-  var state = {date:"", points:0, minutes:20, last:0};
+  var state = {date:"", a:0, b:0, c:0, d:0, minutes:20, last:""};
   var pending = 0;
   var $ = function(id){return document.getElementById(id);};
 
   function today(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+  function total(){return state.a-state.b+state.c-state.d;}
+  function sgn(n){return (n>0?"+":"")+n+" poin";}
 
   function api(method, body){
     return fetch(URL_DB,{method:method,headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined})
@@ -107,8 +111,11 @@ var KODE   = "mashel";               // bebas, sama untuk semua perangkat
   }
 
   function render(){
-    var p=$("pts"); p.textContent=state.points; p.className="pts"+(state.points<0?" neg":"");
-    $("time").textContent="⏱ "+Math.max(0,state.points)*state.minutes+" menit";
+    var t=total(), p=$("pts"); p.textContent=t; p.className="pts"+(t<0?" neg":"");
+    $("time").textContent="⏱ "+Math.max(0,t)*state.minutes+" menit";
+    ["a","b","c","d"].forEach(function(k){$("c"+k).textContent="Sudah "+state[k]+"×";});
+    $("s1").textContent=sgn(state.a-state.b);
+    $("s2").textContent=sgn(state.c-state.d);
     $("undo").disabled = !state.last;
     if(document.activeElement!==$("mnt")) $("mnt").value=state.minutes;
     $("tgl").textContent=new Date().toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long"});
@@ -119,33 +126,34 @@ var KODE   = "mashel";               // bebas, sama untuk semua perangkat
     return api("GET").then(function(d){
       var t=today();
       if(!d || d.date!==t){
-        d={date:t,points:0,last:0,minutes:(d&&d.minutes)||20};
+        d={date:t,a:0,b:0,c:0,d:0,last:"",minutes:(d&&d.minutes)||20};
         return api("PUT",d).then(function(){return d;});
       }
       return d;
     }).then(function(d){
       if(pending>0) return;
-      state={date:d.date,points:d.points||0,minutes:d.minutes||20,last:d.last||0};
+      state={date:d.date,a:d.a||0,b:d.b||0,c:d.c||0,d:d.d||0,minutes:d.minutes||20,last:d.last||""};
       setOnline(true); render();
     }).catch(function(){setOnline(false);});
   }
 
-  function change(delta,last){
+  function change(k,delta){
     pending++;
-    state.points+=delta; state.last=last; render();
-    api("PATCH",{points:{".sv":{increment:delta}},last:last})
+    state[k]+=delta; state.last = delta>0 ? k : ""; render();
+    var body={last:state.last}; body[k]={".sv":{increment:delta}};
+    api("PATCH",body)
       .catch(function(){setOnline(false,"Gagal menyimpan. Coba lagi.");})
       .then(function(){pending--;return sync();});
   }
 
   document.querySelectorAll(".btn").forEach(function(b){
     b.addEventListener("click",function(){
-      var d=parseInt(b.dataset.d,10);
-      change(d,d);
-      if(navigator.vibrate){try{navigator.vibrate(d>0?30:[60,40,60]);}catch(e){}}
+      var k=b.dataset.k;
+      change(k,1);
+      if(navigator.vibrate){try{navigator.vibrate((k==="a"||k==="c")?30:[60,40,60]);}catch(e){}}
     });
   });
-  $("undo").addEventListener("click",function(){ if(state.last) change(-state.last,0); });
+  $("undo").addEventListener("click",function(){ if(state.last) change(state.last,-1); });
   $("gear").addEventListener("click",function(){$("panel").classList.toggle("open");});
   $("mnt").addEventListener("change",function(e){
     var v=parseInt(e.target.value,10);
@@ -155,7 +163,7 @@ var KODE   = "mashel";               // bebas, sama untuk semua perangkat
   $("reset").addEventListener("click",function(){
     if(!confirm("Yakin reset poin hari ini jadi 0?")) return;
     pending++;
-    api("PUT",{date:today(),points:0,last:0,minutes:state.minutes})
+    api("PUT",{date:today(),a:0,b:0,c:0,d:0,last:"",minutes:state.minutes})
       .catch(function(){setOnline(false,"Gagal reset. Coba lagi.");})
       .then(function(){pending--;return sync();});
   });
